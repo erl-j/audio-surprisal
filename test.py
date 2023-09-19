@@ -5,6 +5,10 @@ import math
 import torch
 from audiocraft.utils.notebook import display_audio
 import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+from scipy.ndimage.filters import gaussian_filter1d
+import numpy as np
 
 device = "cuda"
 musicgen_model_version="large"
@@ -24,8 +28,7 @@ cfg_conditions = model.lm.condition_provider(tokenized)
 
 condition_tensors = cfg_conditions
 
-
-#wav, sr = torchaudio.load("assets/surprise_test.wav")
+# load audio
 wav, sr = torchaudio.load(audio_fp)
 wav = torchaudio.functional.resample(wav, sr, 32000) #32k is the model sr
 wav = wav.mean(dim=0, keepdim=True).unsqueeze(0)
@@ -34,15 +37,10 @@ x=wav
 
 display_audio(x, 32000)
 
-
+# encode audio with compression model
 with torch.no_grad():
     gen_audio = model.compression_model.encode(wav)
-
 codes, scale = gen_audio
-
-# codes: torch.Size([1, 4, 1500])
-
-#codes = torch.cat([codes, codes], dim=0)
 encoded_audio = codes
 
 with model.autocast:
@@ -60,17 +58,13 @@ VOCAB_SIZE = logits.shape[-1]
 
 # crop away N_CODES timsteps from end to avoid nans from interleave
 logits = logits[:, :, :-N_CODES,:]
-
 # offset logits by 1 by padding with ones
 logits = torch.cat([torch.ones_like(logits[:, :, :1, :]), logits], dim=2)
-
 temp=4.0
 # apply softmax to get probabilities
 probs = torch.softmax(logits / temp, dim=-1)
-
 # now compute surprisal of tokens
 log_probs = torch.log(probs)
-
 
 # compute entropy of logit distribution
 entropy = -(probs * log_probs).sum(dim=-1)
@@ -80,28 +74,18 @@ encoded_audio_1hot = torch.nn.functional.one_hot(encoded_audio.long(), num_class
 
 # crop away N_CODES timsteps from end to same as logits
 encoded_audio_1hot = encoded_audio_1hot[:, :, :logits.shape[2], :]
-
 self_information = -(log_probs*encoded_audio_1hot).sum(dim=-1)
-
 
 # print shapes
 adjusted_surprise = -((log_probs * encoded_audio_1hot).sum(dim=-1)/entropy)
 
-# plot heat map of probs vs encoded_audio
-import matplotlib.pyplot as plt
-import seaborn as sns
 sns.set_theme()
 
 gt_probs = probs * encoded_audio_1hot
 gt_probs = gt_probs.sum(dim=-1)
 
-
-
-from scipy.ndimage.filters import gaussian_filter1d
-import numpy as np
-
+# gaussian smoothing sigma
 SIGMA= 1
-
 def smooth(x, sigma=SIGMA):
     # numpy convert to float32 
     x = x.astype(np.float32)
