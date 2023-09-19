@@ -326,6 +326,7 @@ class MusicGenSolver(base.StandardSolver):
             self._cached_batch_writer.save(infos)
 
         return condition_tensors, audio_tokens, padding_mask
+    
 
     def run_step(self, idx: int, batch: tp.Tuple[torch.Tensor, tp.List[SegmentWithAttributes]], metrics: dict) -> dict:
         """Perform one training or valid step on a given batch."""

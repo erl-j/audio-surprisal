@@ -98,7 +98,7 @@ class MusicGen:
         """
         if device is None:
             if torch.cuda.device_count():
-                device = 'cuda'
+                device = 'cuda:2'
             else:
                 device = 'cpu'
 
@@ -172,6 +172,9 @@ class MusicGen:
         if return_tokens:
             return self.generate_audio(tokens), tokens
         return self.generate_audio(tokens)
+    
+        
+    
 
     def generate(self, descriptions: tp.List[str], progress: bool = False, return_tokens: bool = False) \
             -> tp.Union[torch.Tensor, tp.Tuple[torch.Tensor, torch.Tensor]]:
@@ -225,8 +228,22 @@ class MusicGen:
         if return_tokens:
             return self.generate_audio(tokens), tokens
         return self.generate_audio(tokens)
+    
+    def compute_logits(self, audio: torch.Tensor, text: tp.List[str] = None) -> torch.Tensor:
+        attributes, prompt_tokens = self._prepare_tokens_and_attributes(text, None, None)
+        # print datatype of model weights
+        for p in self.lm.parameters():
+            print(p.dtype)
+        with torch.no_grad():
+            audio_tokens, scale = self.compression_model.encode(audio)
+            assert scale is None, "Scaled compression model not supported with LM."
+            print(attributes.text)
+            output = self.lm.compute_predictions(audio_tokens, attributes)
+        return output.logits
 
-    def generate_continuation(self, prompt: torch.Tensor, prompt_sample_rate: int,
+    def generate_continuation(self, 
+                              prompt: torch.Tensor, 
+                              prompt_sample_rate: int,
                               descriptions: tp.Optional[tp.List[tp.Optional[str]]] = None,
                               progress: bool = False, return_tokens: bool = False) \
             -> tp.Union[torch.Tensor, tp.Tuple[torch.Tensor, torch.Tensor]]:
