@@ -7,12 +7,12 @@ from audiocraft.utils.notebook import display_audio
 import numpy as np
 
 device = "cuda"
-musicgen_model_version="medium"
+musicgen_model_version="large"
 
 model = MusicGen.get_pretrained(musicgen_model_version, device=device)
 
-audio_fp = "assets/chords.wav"
-prompt = "music"
+audio_fp = "assets/boring_drums.wav"
+prompt = "simple drum beat"
 
 attributes, _ = model._prepare_tokens_and_attributes([prompt], None)
 
@@ -100,7 +100,7 @@ gt_probs = gt_probs.sum(dim=-1)
 from scipy.ndimage.filters import gaussian_filter1d
 import numpy as np
 
-SIGMA= 2
+SIGMA= 1
 
 def smooth(x, sigma=SIGMA):
     # numpy convert to float32 
